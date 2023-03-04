@@ -16,11 +16,13 @@ const agent = new https.Agent({
 // Set EJS as the default engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(express.static('public'));
+app.use(express.static('js'));
 
 // enable CORS
 app.use(cors());
 app.use('/images', express.static(path.join(__dirname, 'images')));
+app.use('/js', express.static(path.join(__dirname, 'js')));
+
 // remove the code to get data from app.js and put it in /car-parks route handler
 app.get('/car-parks', async (req, res) => {
     try {
@@ -52,6 +54,8 @@ app.get('/car-parks', async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+
+
 
 app.get('/', (req, res) => {
     res.render('index');
