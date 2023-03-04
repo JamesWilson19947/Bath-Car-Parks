@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Bath Car Parks</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.css"
+        integrity="sha512-mD70nAW2ThLsWH0zif8JPbfraZ8hbCtjQ+5RU1m4+ztZq6/MymyZeB55pWsi4YAX+73yvcaJyk61mzfYMvtm9w=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: row;
+        }
+
+        #map {
+            height: 100vh;
+            flex: 1;
+        }
+
+        @media (max-width: 768px) {
+            #map {
+                height: 100vh;
+            }
+        }
+
+        #sidebar {
+            flex-basis: 20%;
+            background-color: #f1f1f1;
+            padding: 10px;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        #sidebar.hidden {
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        @media (max-width: 512px) {
+            body {
+                flex-direction: column;
+            }
+
+            #sidebar {
+                flex-basis: auto;
+                order: 1;
+            }
+
+            #map {
+                height: 50vh;
+                order: 2;
+            }
+
+            #sidebar.hidden {
+                display: block;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id='sidebar'>
+        <h2>Car Park Status</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Occupancy</th>
+                    <th>Free Spaces</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="carParkTableBody">
+            </tbody>
+        </table>
+    </div>
+    <div id='map'></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.js"
+        integrity="sha512-Dqm3h1Y4qiHUjbhxTuBGQsza0Tfppn53SHlu/uj1f+RT+xfShfe7r6czRf5r2NmllO2aKx+tYJgoxboOkn1Scg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        const map = L.map('map').setView([51.382168, -2.363052], 16);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        async function getData() {
+            try {
+                const response = await fetch('/car-parks');
+                const data = await response.json();
+                console.log(data);
+
+                // Add circles for each car park and update the table
+                const carParkTableBody = document.getElementById('carParkTableBody');
+                carParkTableBody.innerHTML = ''; // clear previous data
+                data.forEach((carPark) => {
+                    // Calculate the radius of the circle based on the percentage of occupancy
+                    const minRadius = 10; // minimum radius size in pixels
+                    const radius = Math.max(Math.sqrt(carPark.percentage) * 10, minRadius);
+
+                    // Determine the fill color based on the percentage of occupancy
+                    let fillColor;
+                    if (carPark.percentage < 50) {
+                        fillColor = '#00FF00'; // green
+                    } else if (carPark.percentage < 75) {
+                        fillColor = '#FFFF00'; // yellow
+                    } else {
+                        fillColor = '#FF0000'; // red
+                    }
+
+                    if (carPark.status == 'Filling') {
+                        statusImg = '/images/up-arrow.png';
+                        icon = L.icon({
+                            iconUrl: statusImg,
+                            iconSize: [50, 50],
+                        });
+
+                    } else if (carPark.status == 'Emptying') {
+                        statusImg = '/images/down-arrow.png';
+                        icon = L.icon({
+
+                            iconUrl: statusImg,
+                            iconSize: [50, 50],
+                        });
+                    } else {
+                        statusImg = '/images/side-arrow.png';
+                        icon = L.icon({
+                            iconUrl: statusImg,
+                            iconSize: [50, 50],
+                        });
+                    }
+
+
+                    // Create the circle and add it to the map
+                    const circle = L.circleMarker([carPark.lat, carPark.lng], {
+                        radius: radius,
+                        fillColor: fillColor,
+                        fillOpacity: 0.6,
+                        stroke: true
+                    }).addTo(map);
+
+                    const status = L.marker([carPark.lat, carPark.lng], { icon }).addTo(map);
+                    const freeSpaces = Math.max(carPark.capacity - carPark.occupancy, 0);
+
+                    // Add a row to the table
+                    const row = carParkTableBody.insertRow();
+                    const nameCell = row.insertCell();
+                    const occupancyCell = row.insertCell();
+                    const freeSpacesCell = row.insertCell();
+                    const statusCell = row.insertCell();
+                    nameCell.textContent = carPark.name;
+                    occupancyCell.textContent = `${carPark.occupancy}/${carPark.capacity} (${carPark.percentage}%)`;
+                    occupancyCell.classList.add(carPark.percentage < 50 ? 'low-occupancy' : (carPark.percentage < 75 ? 'medium-occupancy' : 'high-occupancy'));
+                    freeSpacesCell.textContent = freeSpaces;
+
+                    // Create the image element and set its source to the statusImg variable
+                    const statusImgEl = document.createElement('img');
+                    statusImgEl.src = statusImg;
+                    statusImgEl.style.width = '20px';
+                    statusImgEl.style.height = '20px';
+
+                    // Append the image element to the status cell
+                    statusCell.appendChild(statusImgEl);
+                    statusCell.appendChild(document.createTextNode(carPark.status));
+
+                    // Add a popup with car park information to the circle
+                    circle.bindPopup(createPopupContent(carPark));
+                    status.bindPopup(createPopupContent(carPark));
+                });
+                function createPopupContent(carPark) {
+                    return `
+                    <h3>${carPark.name}</h3>
+                    <p>Occupancy: ${carPark.occupancy}/${carPark.capacity} (${carPark.percentage}%)</p>
+                    <p>Status: ${carPark.status}</p>
+                    <p>Last updated: ${carPark.lastUpdated}</p>`;
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+
+        getData();
+    </script>
+</body>
+
+</html>
