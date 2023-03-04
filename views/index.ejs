@@ -91,14 +91,15 @@
                     });
                     data.sort((a, b) => a.distance - b.distance);
                 }
-
                 // Add circles for each car park and update the table
                 const carParkTableBody = document.getElementById('carParkTableBody');
                 carParkTableBody.innerHTML = ''; // clear previous data
                 data.forEach((carPark) => {
+                    const occupancyPercentage = Math.round((carPark.occupancy / carPark.capacity) * 100);
+
                     // Calculate the radius of the circle based on the percentage of occupancy
                     const minRadius = 10; // minimum radius size in pixels
-                    const radius = Math.max(Math.sqrt(carPark.percentage) * 10, minRadius);
+                    const radius = Math.max(Math.sqrt(occupancyPercentage) * 10, minRadius);
 
                     // Determine the fill color based on the percentage of occupancy
                     let fillColor;
@@ -152,7 +153,6 @@
                     const statusCell = row.insertCell();
                     const distanceCell = row.insertCell();
                     nameCell.textContent = carPark.name;
-                    const occupancyPercentage = Math.round((carPark.occupancy / carPark.capacity) * 100);
                     occupancyCell.textContent = `${carPark.occupancy}/${carPark.capacity} (${occupancyPercentage}%)`;
                     occupancyCell.classList.add(carPark.percentage < 50 ? 'low-occupancy' : (carPark.percentage < 75 ? 'medium-occupancy' : 'high-occupancy'));
                     freeSpacesCell.textContent = freeSpaces;
@@ -173,13 +173,13 @@
                     statusCell.appendChild(document.createTextNode(carPark.status));
 
                     // Add a popup with car park information to the circle
-                    circle.bindPopup(createPopupContent(carPark));
-                    status.bindPopup(createPopupContent(carPark));
+                    circle.bindPopup(createPopupContent(carPark, occupancyPercentage));
+                    status.bindPopup(createPopupContent(carPark, occupancyPercentage));
                 });
-                function createPopupContent(carPark) {
+                function createPopupContent(carPark, occupancyPercentage) {
                     return `
                     <h3>${carPark.name}</h3>
-                    <p>Occupancy: ${carPark.occupancy}/${carPark.capacity} (${carPark.percentage}%)</p>
+                    <p>Occupancy: ${carPark.occupancy}/${carPark.capacity} (${occupancyPercentage}%)</p>
                     <p>Status: ${carPark.status}</p>
                     <p>Last updated: ${carPark.lastUpdated}</p>`;
                 }
