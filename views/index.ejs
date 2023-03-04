@@ -152,7 +152,8 @@
                     const statusCell = row.insertCell();
                     const distanceCell = row.insertCell();
                     nameCell.textContent = carPark.name;
-                    occupancyCell.textContent = `${carPark.occupancy}/${carPark.capacity} (${carPark.percentage}%)`;
+                    const occupancyPercentage = Math.round((carPark.occupancy / carPark.capacity) * 100);
+                    occupancyCell.textContent = `${carPark.occupancy}/${carPark.capacity} (${occupancyPercentage}%)`;
                     occupancyCell.classList.add(carPark.percentage < 50 ? 'low-occupancy' : (carPark.percentage < 75 ? 'medium-occupancy' : 'high-occupancy'));
                     freeSpacesCell.textContent = freeSpaces;
                     if (userLocation) {
