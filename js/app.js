@@ -50,44 +50,27 @@ async function renderCarParks(data, userLocation, map) {
     const carParkTableBody = document.getElementById('carParkTableBody');
 
     // Render car park markers on map
-    app.get('/car-parks', async (req, res) => {
-        const cachedData = cache.get('carParkData');
-        if (cachedData) {
-            console.log('Returning cached data...');
-            res.json(cachedData);
-        } else {
-            try {
-                const response = await axios.get('https://data.bathnes.gov.uk/geoserver/parking/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=parking%3ACarParkOccupancy&maxFeatures=50&outputFormat=application%2Fjson', {
-                    httpsAgent: agent
-                });
-    
-                const data = response.data;
-    
-                const formattedData = data.features.map((feature) => {
-                    return {
-                        id: feature.properties.ID,
-                        name: feature.properties.Name,
-                        description: feature.properties.Description,
-                        capacity: feature.properties.Capacity,
-                        occupancy: feature.properties.Occupancy,
-                        percentage: feature.properties.Percentage,
-                        location: feature.properties.Location,
-                        lat: feature.properties.lat,
-                        lng: feature.properties.lng,
-                        status: feature.properties.Status,
-                        lastUpdated: feature.properties.LastUpdatedText
-                    };
-                });
-    
-                cache.put('carParkData', formattedData, 10 * 60 * 1000); // cache for 10 minutes
-                res.json(formattedData);
-            } catch (error) {
-                console.error(error);
-                res.status(500).json({ message: 'Internal server error' });
-            }
-        }
+    data.forEach((carPark) => {
+        const latitude = carPark.lat
+        const longitude = carPark.lng
+        const occupancyPercentage = Math.round((carPark.occupancy / carPark.capacity) * 100);
+        const fillColor = getFillColor(occupancyPercentage);
+        const radius = getRadius(occupancyPercentage);
+
+        const marker = L.circleMarker([latitude, longitude], {
+            radius: radius,
+            fillColor: fillColor,
+            fillOpacity: 0.5,
+            stroke: true
+        }).addTo(map);
+
+        const icon = getIcon(carPark.status);
+        const statusMarker = L.marker([latitude, longitude], { icon }).addTo(map);
+
+        marker.bindPopup(createPopupContent(carPark));
+        statusMarker.bindPopup(createPopupContent(carPark));
     });
-    
+
     // Render car park data in table
     const tableRows = data.map((carPark) => {
         const { name, occupancy, capacity, freeSpaces, status } = carPark;

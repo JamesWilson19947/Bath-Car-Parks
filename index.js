@@ -3,6 +3,7 @@ const axios = require('axios');
 const https = require('https');
 const path = require('path');
 const cors = require('cors');
+const cache = require('memory-cache');
 
 const app = express();
 
@@ -25,33 +26,40 @@ app.use('/js', express.static(path.join(__dirname, 'js')));
 
 // remove the code to get data from app.js and put it in /car-parks route handler
 app.get('/car-parks', async (req, res) => {
-    try {
-        const response = await axios.get('https://data.bathnes.gov.uk/geoserver/parking/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=parking%3ACarParkOccupancy&maxFeatures=50&outputFormat=application%2Fjson', {
-            httpsAgent: agent
-        });
+    const cachedData = cache.get('carParkData');
+    if (cachedData) {
+        console.log('Returning cached data...');
+        res.json(cachedData);
+    } else {
+        try {
+            const response = await axios.get('https://data.bathnes.gov.uk/geoserver/parking/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=parking%3ACarParkOccupancy&maxFeatures=50&outputFormat=application%2Fjson', {
+                httpsAgent: agent
+            });
 
-        const data = response.data;
+            const data = response.data;
 
-        const formattedData = data.features.map((feature) => {
-            return {
-                id: feature.properties.ID,
-                name: feature.properties.Name,
-                description: feature.properties.Description,
-                capacity: feature.properties.Capacity,
-                occupancy: feature.properties.Occupancy,
-                percentage: feature.properties.Percentage,
-                location: feature.properties.Location,
-                lat: feature.properties.lat,
-                lng: feature.properties.lng,
-                status: feature.properties.Status,
-                lastUpdated: feature.properties.LastUpdatedText
-            };
-        });
+            const formattedData = data.features.map((feature) => {
+                return {
+                    id: feature.properties.ID,
+                    name: feature.properties.Name,
+                    description: feature.properties.Description,
+                    capacity: feature.properties.Capacity,
+                    occupancy: feature.properties.Occupancy,
+                    percentage: feature.properties.Percentage,
+                    location: feature.properties.Location,
+                    lat: feature.properties.lat,
+                    lng: feature.properties.lng,
+                    status: feature.properties.Status,
+                    lastUpdated: feature.properties.LastUpdatedText
+                };
+            });
 
-        res.json(formattedData);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
+            cache.put('carParkData', formattedData, 10 * 60 * 1000); // cache for 10 minutes
+            res.json(formattedData);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Internal server error' });
+        }
     }
 });
 
