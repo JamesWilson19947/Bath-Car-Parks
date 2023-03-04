@@ -159,6 +159,8 @@
                     if (userLocation) {
                         const distanceInMiles = getDistanceInMiles(userLocation[0], userLocation[1], carPark.lat, carPark.lng);
                         distanceCell.textContent = `${Math.round(distanceInMiles * 10) / 10} mi`;
+                    } else {
+                        distanceCell.textContent = 'N/A';
                     }
                     // Create the image element and set its source to the statusImg variable
                     const statusImgEl = document.createElement('img');
